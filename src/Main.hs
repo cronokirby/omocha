@@ -1,6 +1,6 @@
 module Main where
 
-import Prelude
+import Ourlude
 
 main :: IO ()
-main = putStrLn "Hello, Haskell!"
+main = "Hello, Haskell!" |> putStrLn
