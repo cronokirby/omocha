@@ -29,15 +29,3 @@ pub extern "C" fn signature_public_key_compress(pk: &signature::PublicKey, out: 
     let pk_slice = &pk_bytes;
     unsafe { out.copy_from(pk_slice.as_ptr(), pk_slice.len()) }
 }
-
-#[no_mangle]
-pub extern "C" fn double(x: i32) -> i32 {
-    2 * x
-}
-
-const S: &'static [u8] = b"hello";
-
-#[no_mangle]
-pub extern "C" fn init(out: *mut u8) {
-    unsafe { out.copy_from(S.as_ptr(), S.len()) }
-}
