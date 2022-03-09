@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedRecordDot #-}
 {-# LANGUAGE OverloadedStrings #-}
 module Main where
 
@@ -9,5 +10,9 @@ main = do
   priv <- generatePrivateKey
   let pub = privateToPublic priv
       sig1 = sign priv "foo"
+      compressed = compress pub
+  print (compress pub)
+  let Just pub2 = (decompress compressed.bytes)
   print (verify pub "foo" sig1)
+  print (verify pub2 "foo" sig1)
   print (verify pub "foo2" sig1)

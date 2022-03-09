@@ -27,6 +27,18 @@ pub extern "C" fn signature_public_key_compress(pk: &signature::PublicKey, out: 
 }
 
 #[no_mangle]
+pub extern "C" fn signature_public_key_decompress(
+    data: *const u8,
+    data_len: i32,
+) -> Option<Box<signature::PublicKey>> {
+    let data = unsafe { slice::from_raw_parts(data, data_len as usize) };
+    match signature::PublicKey::try_from(data) {
+        Err(_) => None,
+        Ok(pk) => Some(Box::new(pk)),
+    }
+}
+
+#[no_mangle]
 pub extern "C" fn signature_sign(
     priv_ptr: *const u8,
     data: *const u8,

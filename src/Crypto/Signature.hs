@@ -35,6 +35,9 @@ foreign import ccall unsafe "signature_sign"
 foreign import ccall unsafe "signature_verify"
   c_signature_verify :: Ptr CPublicKey -> Ptr Word8 -> CInt -> Ptr Word8 -> IO CBool
 
+foreign import ccall unsafe "signature_public_key_decompress"
+  c_signature_public_key_decompress :: Ptr Word8 -> CInt -> IO (Ptr CPublicKey)
+
 newtype PrivateKey = PrivateKey {bytes :: ByteString} deriving (Show)
 
 generatePrivateKey :: IO PrivateKey
@@ -68,6 +71,17 @@ compress pub = unsafePerformIO (compressIO pub) |> CompressedPublicKey
       create compressedPublicKeySize <| \bsPtr ->
         withForeignPtr pubFP <| \p ->
           c_signature_public_key_compress p bsPtr
+
+decompress :: ByteString -> Maybe PublicKey
+decompress bytes = decompressIO bytes |> unsafePerformIO |> fmap PublicKey
+  where
+    decompressIO :: ByteString -> IO (Maybe (ForeignPtr CPublicKey))
+    decompressIO bytes =
+      unsafeUseAsCStringLen bytes <| \(bytesPtr, bytesLen) -> do
+        pubPtr <- c_signature_public_key_decompress (castPtr bytesPtr) (fromIntegral bytesLen)
+        if pubPtr == nullPtr
+          then return Nothing
+          else Just <$> newForeignPtr c_signature_free_public_key pubPtr
 
 newtype Signature = Signature {bytes :: ByteString} deriving (Show)
 
