@@ -14,17 +14,6 @@ fn scalar_from_reader(mut reader: blake3::OutputReader) -> Scalar {
     Scalar::from_bytes_mod_order_wide(&digest)
 }
 
-/// This represents the kind of Error that can happen when signing.
-pub enum Error {
-    /// An invalid public key was found when deserializing.
-    InvalidPublicKey,
-    /// A signature failed to verify, for some reason.
-    ///
-    /// We intentionally provide minimal detail on why this signature failed, to
-    /// thwart any attacks using this extra information.
-    InvalidSignature,
-}
-
 /// The number of bytes in a private key.
 pub const PRIVATE_KEY_SIZE: usize = 32;
 /// The number of bytes in a public key.
@@ -57,6 +46,18 @@ impl PrivateKey {
                 .update(&self.bytes)
                 .finalize_xof(),
         )
+    }
+
+    /// Read a private key from a raw pointer.
+    ///
+    /// For this to be safe, there needs to be at least PRIVATE_KEY_SIZE bytes
+    /// worth of data at this address.
+    ///
+    /// This is purely a convenience method for FFI.
+    pub unsafe fn from_pointer(data: *const u8) -> Self {
+        let mut bytes: [u8; PRIVATE_KEY_SIZE] = [0; PRIVATE_KEY_SIZE];
+        data.copy_to(bytes.as_mut_ptr(), PRIVATE_KEY_SIZE);
+        PrivateKey { bytes }
     }
 
     /// create a new PrivateKey from randomness.
@@ -124,6 +125,20 @@ impl From<[u8; PRIVATE_KEY_SIZE]> for PrivateKey {
 
 pub struct Signature([u8; SIGNATURE_SIZE]);
 
+impl Signature {
+    /// Read a signature from a raw pointer.
+    ///
+    /// For this to be safe, there needs to be at least SIGNATURE_SIZE bytes
+    /// worth of data at this address.
+    ///
+    /// This is purely a convenience method for FFI.
+    pub unsafe fn from_pointer(data: *const u8) -> Self {
+        let mut sig_bytes: [u8; SIGNATURE_SIZE] = [0; SIGNATURE_SIZE];
+        data.copy_to(sig_bytes.as_mut_ptr(), SIGNATURE_SIZE);
+        Signature(sig_bytes)
+    }
+}
+
 impl Into<[u8; SIGNATURE_SIZE]> for Signature {
     fn into(self) -> [u8; SIGNATURE_SIZE] {
         self.0
@@ -139,10 +154,12 @@ impl From<[u8; SIGNATURE_SIZE]> for Signature {
 pub struct PublicKey(RistrettoPoint);
 
 impl PublicKey {
-    pub fn verify(&self, signature: &Signature, message: &[u8]) -> Result<(), Error> {
+    pub fn verify(&self, signature: &Signature, message: &[u8]) -> bool {
         let surprise_point_compressed = CompressedRistretto::from_slice(&signature.0[..32]);
-        let response = Scalar::from_canonical_bytes(signature.0[32..].try_into().unwrap())
-            .ok_or(Error::InvalidSignature)?;
+        let response = match Scalar::from_canonical_bytes(signature.0[32..].try_into().unwrap()) {
+            Some(x) => x,
+            None => return false,
+        };
 
         let challenge = scalar_from_reader(
             blake3::Hasher::new()
@@ -155,19 +172,15 @@ impl PublicKey {
         let should_be_surprise_point =
             RistrettoPoint::vartime_double_scalar_mul_basepoint(&-challenge, &self.0, &response);
 
-        if !bool::from(
+        bool::from(
             should_be_surprise_point
                 .compress()
                 .ct_eq(&surprise_point_compressed),
-        ) {
-            return Err(Error::InvalidSignature);
-        }
-
-        Ok(())
+        )
     }
 }
 
-impl <'a> Into<[u8; PUBLIC_KEY_SIZE]> for &'a PublicKey {
+impl<'a> Into<[u8; PUBLIC_KEY_SIZE]> for &'a PublicKey {
     fn into(self) -> [u8; PUBLIC_KEY_SIZE] {
         self.0.compress().to_bytes()
     }
@@ -200,7 +213,7 @@ mod test {
         let private_key = PrivateKey::random(&mut OsRng);
         let public_key = private_key.public_key();
         let signature = private_key.sign(message);
-        assert!(public_key.verify(&signature, message).is_ok());
+        assert!(public_key.verify(&signature, message));
     }
 
     #[test]
@@ -210,7 +223,7 @@ mod test {
         let private_key = PrivateKey::random(&mut OsRng);
         let public_key = private_key.public_key();
         let signature = private_key.sign(message1);
-        assert!(public_key.verify(&signature, message2).is_err());
+        assert!(!public_key.verify(&signature, message2));
     }
 
     #[test]
@@ -219,6 +232,6 @@ mod test {
         let private_key = PrivateKey::random(&mut OsRng);
         let public_key = PrivateKey::random(&mut OsRng).public_key();
         let signature = private_key.sign(message);
-        assert!(public_key.verify(&signature, message).is_err());
+        assert!(public_key.verify(&signature, message));
     }
 }
