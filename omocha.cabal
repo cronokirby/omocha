@@ -12,7 +12,8 @@ extra-source-files: CHANGELOG.md
 executable omocha
     main-is:          Main.hs
 
-    other-modules: Ourlude
+    other-modules:    Ourlude
+                    , Crypto.Signature
     build-depends:    base ^>=4.16.0.0
                     , bytestring ^>=0.11
     hs-source-dirs:   src

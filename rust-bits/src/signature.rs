@@ -1,4 +1,3 @@
-struct PublicKey(RistrettoPoint);
 use std::io::Read;
 
 use blake3;
@@ -30,8 +29,6 @@ pub enum Error {
 pub const PRIVATE_KEY_SIZE: usize = 32;
 /// The number of bytes in a public key.
 pub const PUBLIC_KEY_SIZE: usize = 32;
-// The number of bytes in the hedge factor for signatures.
-const HEDGE_SIZE: usize = 32;
 /// The number of bytes in a signature.
 pub const SIGNATURE_SIZE: usize = 64;
 
@@ -113,7 +110,33 @@ impl PrivateKey {
     }
 }
 
+impl Into<[u8; PRIVATE_KEY_SIZE]> for PrivateKey {
+    fn into(self) -> [u8; PRIVATE_KEY_SIZE] {
+        self.bytes
+    }
+}
+
+impl From<[u8; PRIVATE_KEY_SIZE]> for PrivateKey {
+    fn from(bytes: [u8; PRIVATE_KEY_SIZE]) -> Self {
+        Self { bytes }
+    }
+}
+
 pub struct Signature([u8; SIGNATURE_SIZE]);
+
+impl Into<[u8; SIGNATURE_SIZE]> for Signature {
+    fn into(self) -> [u8; SIGNATURE_SIZE] {
+        self.0
+    }
+}
+
+impl From<[u8; SIGNATURE_SIZE]> for Signature {
+    fn from(bytes: [u8; SIGNATURE_SIZE]) -> Self {
+        Signature(bytes)
+    }
+}
+
+pub struct PublicKey(RistrettoPoint);
 
 impl PublicKey {
     pub fn verify(&self, signature: &Signature, message: &[u8]) -> Result<(), Error> {
@@ -141,6 +164,12 @@ impl PublicKey {
         }
 
         Ok(())
+    }
+}
+
+impl <'a> Into<[u8; PUBLIC_KEY_SIZE]> for &'a PublicKey {
+    fn into(self) -> [u8; PUBLIC_KEY_SIZE] {
+        self.0.compress().to_bytes()
     }
 }
 

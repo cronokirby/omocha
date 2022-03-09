@@ -1,17 +1,17 @@
 module Main where
 
-import Ourlude
-
+import Crypto.Signature
 import Data.ByteString
+import Data.ByteString.Builder
 import Data.ByteString.Internal
 import Data.Word
 import Foreign.C.Types
 import Foreign.Ptr
-
-foreign import ccall unsafe "init" c_init :: Ptr Word8 -> IO ()
-
-initBS :: ByteString
-initBS = unsafeCreate 5 c_init
+import Ourlude
 
 main :: IO ()
-main = initBS |> print
+main = do
+  priv <- generatePrivateKey
+  print priv
+  let pub = privateToPublic priv
+  print (compress pub)
