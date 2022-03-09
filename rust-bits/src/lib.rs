@@ -3,7 +3,7 @@ use rand_core::OsRng;
 use signature::PRIVATE_KEY_SIZE;
 
 #[no_mangle]
-pub extern "C" fn generate_signature_private_key(out: *mut u8) {
+pub extern "C" fn signature_generate_private_key(out: *mut u8) {
     let private_bytes: [u8; signature::PRIVATE_KEY_SIZE] =
         signature::PrivateKey::random(&mut OsRng).into();
     let slice = &private_bytes;
@@ -21,7 +21,7 @@ pub extern "C" fn signature_private_key_to_public_key(
 }
 
 #[no_mangle]
-pub extern "C" fn free_signature_public_key(_: Box<signature::PublicKey>) {}
+pub extern "C" fn signature_free_public_key(_: Box<signature::PublicKey>) {}
 
 #[no_mangle]
 pub extern "C" fn signature_public_key_compress(pk: &signature::PublicKey, out: *mut u8) {

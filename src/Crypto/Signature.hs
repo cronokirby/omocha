@@ -17,14 +17,14 @@ import Ourlude
 privateKeySize :: Int
 privateKeySize = 32
 
-foreign import ccall unsafe "generate_signature_private_key"
-  c_generate_signature_private_key :: Ptr Word8 -> IO ()
+foreign import ccall unsafe "signature_generate_private_key"
+  c_signature_generate_private_key :: Ptr Word8 -> IO ()
 
 foreign import ccall unsafe "signature_private_key_to_public_key"
   c_signature_private_key_to_public_key :: Ptr Word8 -> IO (Ptr CPublicKey)
 
-foreign import ccall unsafe "&free_signature_public_key"
-  c_free_signature_public_key :: FinalizerPtr CPublicKey
+foreign import ccall unsafe "&signature_free_public_key"
+  c_signature_free_public_key :: FinalizerPtr CPublicKey
 
 foreign import ccall unsafe "signature_public_key_compress"
   c_signature_public_key_compress :: Ptr CPublicKey -> Ptr Word8 -> IO ()
@@ -33,7 +33,7 @@ newtype PrivateKey = PrivateKey ByteString deriving (Show)
 
 generatePrivateKey :: IO PrivateKey
 generatePrivateKey =
-  create privateKeySize c_generate_signature_private_key |> fmap PrivateKey
+  create privateKeySize c_signature_generate_private_key |> fmap PrivateKey
 
 privateToPublic :: PrivateKey -> PublicKey
 privateToPublic (PrivateKey bs) =
@@ -41,7 +41,7 @@ privateToPublic (PrivateKey bs) =
     <| unsafeUseAsCStringLen bs
     <| \(privPtr, _) -> do
       pubPtr <- c_signature_private_key_to_public_key (castPtr privPtr)
-      newForeignPtr c_free_signature_public_key pubPtr
+      newForeignPtr c_signature_free_public_key pubPtr
 
 data CPublicKey
 
