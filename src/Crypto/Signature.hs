@@ -35,19 +35,21 @@ foreign import ccall unsafe "signature_sign"
 foreign import ccall unsafe "signature_verify"
   c_signature_verify :: Ptr CPublicKey -> Ptr Word8 -> CInt -> Ptr Word8 -> IO CBool
 
-newtype PrivateKey = PrivateKey ByteString deriving (Show)
+newtype PrivateKey = PrivateKey {bytes :: ByteString} deriving (Show)
 
 generatePrivateKey :: IO PrivateKey
 generatePrivateKey =
   create privateKeySize c_signature_generate_private_key |> fmap PrivateKey
 
 privateToPublic :: PrivateKey -> PublicKey
-privateToPublic (PrivateKey bs) =
-  PublicKey <| unsafePerformIO
-    <| unsafeUseAsCStringLen bs
-    <| \(privPtr, _) -> do
-      pubPtr <- c_signature_private_key_to_public_key (castPtr privPtr)
-      newForeignPtr c_signature_free_public_key pubPtr
+privateToPublic priv = unsafePerformIO (privToPubIO priv) |> PublicKey
+  where
+    privToPubIO :: PrivateKey -> IO (ForeignPtr CPublicKey)
+    privToPubIO (PrivateKey privBS) =
+      unsafeUseAsCStringLen privBS
+        <| \(privPtr, _) -> do
+          pubPtr <- c_signature_private_key_to_public_key (castPtr privPtr)
+          newForeignPtr c_signature_free_public_key pubPtr
 
 data CPublicKey
 
@@ -59,29 +61,35 @@ compressedPublicKeySize :: Int
 compressedPublicKeySize = 32
 
 compress :: PublicKey -> CompressedPublicKey
-compress (PublicKey fp) =
-  unsafePerformIO <| do
-    bs <- create compressedPublicKeySize (\bsPtr -> withForeignPtr fp (\p -> c_signature_public_key_compress p bsPtr))
-    return (CompressedPublicKey bs)
+compress pub = unsafePerformIO (compressIO pub) |> CompressedPublicKey
+  where
+    compressIO :: PublicKey -> IO ByteString
+    compressIO (PublicKey pubFP) =
+      create compressedPublicKeySize <| \bsPtr ->
+        withForeignPtr pubFP <| \p ->
+          c_signature_public_key_compress p bsPtr
 
-newtype Signature = Signature (ByteString) deriving (Show)
+newtype Signature = Signature {bytes :: ByteString} deriving (Show)
 
 signatureSize :: Int
 signatureSize = 64
 
 sign :: PrivateKey -> ByteString -> Signature
-sign (PrivateKey privBS) messageBS =
-  Signature <| unsafePerformIO
-    <| create signatureSize
-    <| \sigPtr -> do
-      unsafeUseAsCStringLen privBS <| \(privPtr, _) -> do
-        unsafeUseAsCStringLen messageBS <| \(messagePtr, messageLen) -> do
-          c_signature_sign (castPtr privPtr) (castPtr messagePtr) (fromIntegral messageLen) sigPtr
+sign priv messageBS = unsafePerformIO (signIO priv messageBS) |> Signature
+  where
+    signIO :: PrivateKey -> ByteString -> IO ByteString
+    signIO priv messageBS =
+      create signatureSize <| \sigPtr ->
+        unsafeUseAsCStringLen priv.bytes <| \(privPtr, _) ->
+          unsafeUseAsCStringLen messageBS <| \(messagePtr, messageLen) ->
+            c_signature_sign (castPtr privPtr) (castPtr messagePtr) (fromIntegral messageLen) sigPtr
 
 verify :: PublicKey -> ByteString -> Signature -> Bool
-verify (PublicKey pubFP) messageBS (Signature sigBS) =
-  (== 1) <| unsafePerformIO <| do
-    withForeignPtr pubFP <| \pubPtr -> do
-      unsafeUseAsCStringLen messageBS <| \(messagePtr, messageLen) -> do
-        unsafeUseAsCStringLen sigBS <| \(sigPtr, _) -> do
-          c_signature_verify pubPtr (castPtr messagePtr) (fromIntegral messageLen) (castPtr sigPtr)
+verify pub messageBS sig = unsafePerformIO (verifyIO pub messageBS sig) |> (== 1)
+  where
+    verifyIO :: PublicKey -> ByteString -> Signature -> IO CBool
+    verifyIO (PublicKey pubFP) messageBS sig =
+      withForeignPtr pubFP <| \pubPtr ->
+        unsafeUseAsCStringLen messageBS <| \(messagePtr, messageLen) ->
+          unsafeUseAsCStringLen sig.bytes <| \(sigPtr, _) ->
+            c_signature_verify pubPtr (castPtr messagePtr) (fromIntegral messageLen) (castPtr sigPtr)
