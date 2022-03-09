@@ -45,7 +45,7 @@ generatePrivateKey =
   create privateKeySize c_signature_generate_private_key |> fmap PrivateKey
 
 privateToPublic :: PrivateKey -> PublicKey
-privateToPublic priv = unsafePerformIO (privToPubIO priv) |> PublicKey
+privateToPublic priv = privToPubIO priv |> unsafePerformIO |> PublicKey
   where
     privToPubIO :: PrivateKey -> IO (ForeignPtr CPublicKey)
     privToPubIO (PrivateKey privBS) =
@@ -89,7 +89,7 @@ signatureSize :: Int
 signatureSize = 64
 
 sign :: PrivateKey -> ByteString -> Signature
-sign priv messageBS = unsafePerformIO (signIO priv messageBS) |> Signature
+sign priv messageBS = signIO priv messageBS |> unsafePerformIO |> Signature
   where
     signIO :: PrivateKey -> ByteString -> IO ByteString
     signIO priv messageBS =
@@ -99,7 +99,7 @@ sign priv messageBS = unsafePerformIO (signIO priv messageBS) |> Signature
             c_signature_sign (castPtr privPtr) (castPtr messagePtr) (fromIntegral messageLen) sigPtr
 
 verify :: PublicKey -> ByteString -> Signature -> Bool
-verify pub messageBS sig = unsafePerformIO (verifyIO pub messageBS sig) |> (== 1)
+verify pub messageBS sig = verifyIO pub messageBS sig |> unsafePerformIO |> (== 1)
   where
     verifyIO :: PublicKey -> ByteString -> Signature -> IO CBool
     verifyIO (PublicKey pubFP) messageBS sig =
