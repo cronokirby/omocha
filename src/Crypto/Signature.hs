@@ -3,7 +3,9 @@
 
 module Crypto.Signature where
 
+import Control.Monad (guard)
 import Data.ByteString (ByteString)
+import qualified Data.ByteString as BS
 import Data.ByteString.Internal (create)
 import Data.ByteString.Unsafe (unsafeUseAsCStringLen)
 import Data.Word (Word8)
@@ -62,13 +64,11 @@ data CPublicKey
 
 newtype PublicKey = PublicKey (ForeignPtr CPublicKey)
 
-newtype CompressedPublicKey = CompressedPublicKey {bytes :: ByteString} deriving (Show)
-
 compressedPublicKeySize :: Int
 compressedPublicKeySize = 32
 
-compress :: PublicKey -> CompressedPublicKey
-compress pub = unsafePerformIO (compressIO pub) |> CompressedPublicKey
+compress :: PublicKey -> ByteString
+compress pub = unsafePerformIO (compressIO pub)
   where
     compressIO :: PublicKey -> IO ByteString
     compressIO (PublicKey pubFP) =
@@ -77,7 +77,9 @@ compress pub = unsafePerformIO (compressIO pub) |> CompressedPublicKey
           c_signature_public_key_compress p bsPtr
 
 decompress :: ByteString -> Maybe PublicKey
-decompress bytes = decompressIO bytes |> unsafePerformIO |> fmap PublicKey
+decompress bytes = do
+  guard (BS.length bytes == compressedPublicKeySize)
+  decompressIO bytes |> unsafePerformIO |> fmap PublicKey
   where
     decompressIO :: ByteString -> IO (Maybe (ForeignPtr CPublicKey))
     decompressIO bytes =
