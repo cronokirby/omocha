@@ -105,8 +105,11 @@ sign priv messageBS = signIO priv messageBS |> unsafePerformIO |> Signature
             c_signature_sign (castPtr privPtr) (castPtr messagePtr) (fromIntegral messageLen) sigPtr
 
 verify :: PublicKey -> ByteString -> Signature -> Bool
-verify pub messageBS sig = verifyIO pub messageBS sig |> unsafePerformIO |> (== 1)
+verify pub messageBS sig = lengthValid && signatureVerifies
   where
+    lengthValid = BS.length sig.bytes == signatureSize
+    signatureVerifies = verifyIO pub messageBS sig |> unsafePerformIO |> (== 1)
+
     verifyIO :: PublicKey -> ByteString -> Signature -> IO CBool
     verifyIO (PublicKey pubFP) messageBS sig =
       withForeignPtr pubFP <| \pubPtr ->
