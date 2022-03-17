@@ -3,14 +3,18 @@
 
 module Crypto.Signature where
 
-import Data.ByteString
-import Data.ByteString.Builder
-import Data.ByteString.Internal
+import Data.ByteString (ByteString)
+import Data.ByteString.Internal (create)
 import Data.ByteString.Unsafe (unsafeUseAsCStringLen)
-import Data.Word
-import Foreign.C.Types
+import Data.Word (Word8)
+import Foreign.C.Types (CBool (..), CInt (..))
 import Foreign.ForeignPtr
-import Foreign.Ptr
+  ( FinalizerPtr,
+    ForeignPtr,
+    newForeignPtr,
+    withForeignPtr,
+  )
+import Foreign.Ptr (Ptr, castPtr, nullPtr)
 import GHC.IO (unsafePerformIO)
 import Ourlude
 
