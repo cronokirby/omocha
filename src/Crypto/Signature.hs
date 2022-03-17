@@ -1,7 +1,23 @@
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE OverloadedRecordDot #-}
 
-module Crypto.Signature where
+module Crypto.Signature
+  ( PrivateKey,
+    privateKeySize,
+    generatePrivateKey,
+    privateKeyToBytes,
+    privateKeyFromBytes,
+    privateToPublic,
+    PublicKey,
+    compressedPublicKeySize,
+    compress,
+    decompress,
+    Signature (..),
+    signatureSize,
+    sign,
+    verify,
+  )
+where
 
 import Control.Monad (guard)
 import Data.ByteString (ByteString)
