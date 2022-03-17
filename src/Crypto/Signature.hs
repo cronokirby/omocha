@@ -20,9 +20,6 @@ import Foreign.Ptr (Ptr, castPtr, nullPtr)
 import GHC.IO (unsafePerformIO)
 import Ourlude
 
-privateKeySize :: Int
-privateKeySize = 32
-
 foreign import ccall unsafe "signature_generate_private_key"
   c_signature_generate_private_key :: Ptr Word8 -> IO ()
 
@@ -46,9 +43,18 @@ foreign import ccall unsafe "signature_public_key_decompress"
 
 newtype PrivateKey = PrivateKey {bytes :: ByteString} deriving (Show)
 
+privateKeySize :: Int
+privateKeySize = 32
+
 generatePrivateKey :: IO PrivateKey
 generatePrivateKey =
   create privateKeySize c_signature_generate_private_key |> fmap PrivateKey
+
+privateKeyToBytes :: PrivateKey -> ByteString
+privateKeyToBytes priv = priv.bytes
+
+privateKeyFromBytes :: ByteString -> Maybe PrivateKey
+privateKeyFromBytes bs = guard (BS.length bs == privateKeySize) >> Just (PrivateKey bs)
 
 privateToPublic :: PrivateKey -> PublicKey
 privateToPublic priv = privToPubIO priv |> unsafePerformIO |> PublicKey
