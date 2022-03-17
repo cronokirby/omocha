@@ -9,7 +9,7 @@ import qualified Data.ByteString as BS
 import Data.ByteString.Internal (create)
 import Data.ByteString.Unsafe (unsafeUseAsCStringLen)
 import Data.Word (Word8)
-import Foreign.C.Types (CBool (..), CInt (..))
+import Foreign.C.Types (CBool (..), CSize (..))
 import Foreign.ForeignPtr
   ( FinalizerPtr,
     ForeignPtr,
@@ -36,13 +36,13 @@ foreign import ccall unsafe "signature_public_key_compress"
   c_signature_public_key_compress :: Ptr CPublicKey -> Ptr Word8 -> IO ()
 
 foreign import ccall unsafe "signature_sign"
-  c_signature_sign :: Ptr Word8 -> Ptr Word8 -> CInt -> Ptr Word8 -> IO ()
+  c_signature_sign :: Ptr Word8 -> Ptr Word8 -> CSize -> Ptr Word8 -> IO ()
 
 foreign import ccall unsafe "signature_verify"
-  c_signature_verify :: Ptr CPublicKey -> Ptr Word8 -> CInt -> Ptr Word8 -> IO CBool
+  c_signature_verify :: Ptr CPublicKey -> Ptr Word8 -> CSize -> Ptr Word8 -> IO CBool
 
 foreign import ccall unsafe "signature_public_key_decompress"
-  c_signature_public_key_decompress :: Ptr Word8 -> CInt -> IO (Ptr CPublicKey)
+  c_signature_public_key_decompress :: Ptr Word8 -> CSize -> IO (Ptr CPublicKey)
 
 newtype PrivateKey = PrivateKey {bytes :: ByteString} deriving (Show)
 
