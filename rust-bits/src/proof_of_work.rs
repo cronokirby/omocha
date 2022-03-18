@@ -48,7 +48,7 @@ pub struct ProofOfWork {
 impl ProofOfWork {
     /// check whether or not this proof of work is valid over a given context.
     pub fn check(&self, ctx: &[u8]) -> bool {
-        self.hash == hash_once(&self.nonce, ctx) && self.hash >= DIFFICULTY
+        self.hash >= DIFFICULTY && self.hash == hash_once(&self.nonce, ctx)
     }
 }
 
