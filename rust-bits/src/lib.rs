@@ -64,3 +64,47 @@ pub extern "C" fn signature_verify(
     let sig = unsafe { signature::Signature::from_pointer(sig_ptr) };
     public.verify(&sig, message)
 }
+
+#[no_mangle]
+pub extern "C" fn proof_of_work_check(data: *const u8, data_len: usize, proof: *const u8) -> bool {
+    let context = unsafe { slice::from_raw_parts(data, data_len) };
+    let mut pow_bytes = [0; proof_of_work::PROOF_OF_WORK_SIZE];
+    unsafe { proof.copy_to(pow_bytes.as_mut_ptr(), proof_of_work::PROOF_OF_WORK_SIZE) };
+    let pow = proof_of_work::ProofOfWork::from(pow_bytes);
+    pow.check(context)
+}
+
+#[no_mangle]
+pub extern "C" fn proof_of_work_try(
+    data: *const u8,
+    data_len: usize,
+    tries: usize,
+    out: *mut u8,
+) -> bool {
+    let context = unsafe { slice::from_raw_parts(data, data_len) };
+    match proof_of_work::ProofOfWork::try_many(
+        &mut OsRng,
+        context,
+        proof_of_work::DEFAULT_DIFFICULTY,
+        tries,
+    ) {
+        None => false,
+        Some(pow) => {
+            let pow_bytes: [u8; proof_of_work::PROOF_OF_WORK_SIZE] = pow.into();
+            unsafe { out.copy_from(pow_bytes.as_ptr(), proof_of_work::PROOF_OF_WORK_SIZE) };
+            true
+        }
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn proof_of_work_make(data: *const u8, data_len: usize, out: *mut u8) {
+    let context = unsafe { slice::from_raw_parts(data, data_len) };
+    let pow = proof_of_work::ProofOfWork::try_forever(
+        &mut OsRng,
+        context,
+        proof_of_work::DEFAULT_DIFFICULTY,
+    );
+    let pow_bytes: [u8; proof_of_work::PROOF_OF_WORK_SIZE] = pow.into();
+    unsafe { out.copy_from(pow_bytes.as_ptr(), proof_of_work::PROOF_OF_WORK_SIZE) };
+}
