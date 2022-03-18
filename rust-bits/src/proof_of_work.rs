@@ -1,3 +1,4 @@
+use rand_core::{CryptoRng, RngCore};
 use std::hash::Hash;
 
 use argon2;
@@ -40,6 +41,10 @@ fn hash_once(nonce: &[u8], msg: &[u8]) -> u128 {
     u128::from_le_bytes(hash.try_into().unwrap())
 }
 
+/// Represents a proof that a certain amount of computation has been done.
+///
+/// This proof is bound to a given context, preventing it from being valid
+/// outside of that context.
 pub struct ProofOfWork {
     nonce: [u8; NONCE_SIZE],
     hash: u128,
@@ -49,6 +54,39 @@ impl ProofOfWork {
     /// check whether or not this proof of work is valid over a given context.
     pub fn check(&self, ctx: &[u8]) -> bool {
         self.hash >= DIFFICULTY && self.hash == hash_once(&self.nonce, ctx)
+    }
+
+    /// try to generate a valid proof of work once.
+    pub fn try_once<R: RngCore + CryptoRng>(rng: &mut R, ctx: &[u8]) -> Option<Self> {
+        let mut nonce = [0; NONCE_SIZE];
+        rng.fill_bytes(&mut nonce);
+        let hash = hash_once(&nonce, ctx);
+        if hash < DIFFICULTY {
+            None
+        } else {
+            Some(Self { nonce, hash })
+        }
+    }
+
+    /// try to generate a valid proof of work multiple times.
+    pub fn try_many<R: RngCore + CryptoRng>(rng: &mut R, ctx: &[u8], tries: usize) -> Option<Self> {
+        for _ in 0..tries {
+            match Self::try_once(rng, ctx) {
+                Some(x) => return Some(x),
+                None => {}
+            }
+        }
+        None
+    }
+
+    /// generate a valid proof of work by iterating until one is found.
+    pub fn try_forever<R: RngCore + CryptoRng>(rng: &mut R, ctx: &[u8]) -> Self {
+        loop {
+            match Self::try_once(rng, ctx) {
+                Some(x) => return x,
+                None => {}
+            }
+        }
     }
 }
 

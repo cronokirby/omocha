@@ -24,6 +24,9 @@ checkProofOfWork :: ByteString -> ProofOfWork -> Bool
 checkProofOfWork = undefined
 
 -- | Try creating a proof of work, with a certain number of tries.
+--
+-- The reason this exists is to allow periodically checking the head
+-- of the chain, allowing us to stop working on a stale head.
 tryProofOfWork :: Int -> ByteString -> IO (Maybe ProofOfWork)
 tryProofOfWork = undefined
 
