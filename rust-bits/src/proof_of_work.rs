@@ -124,3 +124,24 @@ impl From<[u8; PROOF_OF_WORK_SIZE]> for ProofOfWork {
         }
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use rand_core::OsRng;
+
+    #[test]
+    fn test_proof_of_work_is_valid() {
+        let ctx = b"context";
+        let pow = ProofOfWork::try_forever(&mut OsRng, ctx, 0);
+        assert!(pow.check(ctx));
+    }
+
+    #[test]
+    fn test_proof_of_work_is_invalid_on_different_context() {
+        let ctxa = b"contextA";
+        let ctxb = b"contextB";
+        let pow = ProofOfWork::try_forever(&mut OsRng, ctxa, 0);
+        assert!(!pow.check(ctxb));
+    }
+}
