@@ -15,9 +15,10 @@ pub const PROOF_OF_WORK_SIZE: usize = NONCE_SIZE + HASH_SIZE;
 
 /// DEFAULT_DIFFICULTY restricts the space of valid hashes.
 ///
-/// If the difficulty is D, the hash must be >= D. D directly represents
-/// the number of invalid hashes.
-pub const DEFAULT_DIFFICULTY: u128 = 0;
+/// If the difficulty is D, the hash must be <= D
+/// 
+/// (1 << (128 - x)) - 1 makes the first x bits have to be 0.
+pub const DEFAULT_DIFFICULTY: u128 = (1 << (128 - 9)) - 1;
 
 fn default_config() -> argon2::Config<'static> {
     argon2::Config {
@@ -53,7 +54,7 @@ pub struct ProofOfWork {
 impl ProofOfWork {
     /// check whether or not this proof of work is valid over a given context.
     pub fn check(&self, ctx: &[u8]) -> bool {
-        self.hash >= self.difficulty && self.hash == hash_once(&self.nonce, ctx)
+        self.hash <= self.difficulty && self.hash == hash_once(&self.nonce, ctx)
     }
 
     /// try to generate a valid proof of work once.
@@ -65,7 +66,7 @@ impl ProofOfWork {
         let mut nonce = [0; NONCE_SIZE];
         rng.fill_bytes(&mut nonce);
         let hash = hash_once(&nonce, ctx);
-        if hash < difficulty {
+        if hash > difficulty {
             None
         } else {
             Some(Self {
