@@ -1,4 +1,6 @@
+mod proof_of_work;
 mod signature;
+
 use rand_core::OsRng;
 use std::slice;
 
