@@ -232,6 +232,6 @@ mod test {
         let private_key = PrivateKey::random(&mut OsRng);
         let public_key = PrivateKey::random(&mut OsRng).public_key();
         let signature = private_key.sign(message);
-        assert!(public_key.verify(&signature, message));
+        assert!(!public_key.verify(&signature, message));
     }
 }
