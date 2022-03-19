@@ -22,3 +22,18 @@ executable omocha
     default-extensions: NoImplicitPrelude
     extra-libraries: omocha_rust_bits
     extra-lib-dirs: rust-bits/target/release
+
+test-suite omocha-test
+    type:             exitcode-stdio-1.0
+    main-is:          Test.hs
+
+    other-modules:    Ourlude
+                    , Crypto.Signature
+                    , Crypto.Work
+    build-depends:    base ^>=4.16.0.0
+                    , bytestring ^>=0.11
+    hs-source-dirs:   src, test
+    default-language: Haskell2010
+    default-extensions: NoImplicitPrelude
+    extra-libraries: omocha_rust_bits
+    extra-lib-dirs: rust-bits/target/release
