@@ -13,6 +13,7 @@ where
 import Data.ByteString (ByteString)
 import Data.ByteString.Internal (create)
 import Data.ByteString.Unsafe (unsafeUseAsCStringLen)
+import Data.IORef (newIORef, readIORef, writeIORef)
 import Data.Word (Word8)
 import Foreign.C.Types (CBool (..), CSize (..))
 import Foreign.Ptr (Ptr, castPtr, nullPtr)
@@ -52,7 +53,20 @@ checkProofOfWork contextBS pow = checkProofOfWorkIO contextBS pow |> unsafePerfo
 -- The reason this exists is to allow periodically checking the head
 -- of the chain, allowing us to stop working on a stale head.
 tryProofOfWork :: Int -> ByteString -> IO (Maybe ProofOfWork)
-tryProofOfWork = undefined
+tryProofOfWork tries contextBS
+  | tries < 0 = return Nothing
+  | otherwise = do
+      -- Need to use an IORef in order to capture the return result inside create
+      ok <- newIORef False
+      powBS <-
+        create proofOfWorkSize <| \powPtr ->
+          unsafeUseAsCStringLen contextBS <| \(contextPtr, contextLen) -> do
+            ret <- c_proof_of_work_try (castPtr contextPtr) (fromIntegral contextLen) (fromIntegral tries) powPtr
+            writeIORef ok (ret == 1)
+      isOk <- readIORef ok
+      if isOk
+        then return (Just (ProofOfWork powBS))
+        else return Nothing
 
 -- | Create a proof of work, using as many tries as necessary.
 makeProofOfWork :: ByteString -> IO ProofOfWork
